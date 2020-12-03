@@ -25,9 +25,9 @@
 #define MAX_FLOOR 4
 
 static char LOG_TAG[] = "ElevatorApp";
-static int currentFloor = 1;
+static int currentFloor = 0;
 //---------------Floor position: 0, 1, 2, 3, 4, 5, 6, 7 // 0 change to G for display
-static int chosenFloorList[8] = {1, 0, 1, 1, 0, 0, 0, 0};
+static int chosenFloorList[8] = {0, 0, 0, 1, 0, 0, 0, 0};
 
 BLECharacteristic *pCharacteristic;
 
@@ -63,7 +63,7 @@ class MainTask: public Task {
 		GOING_DOWN
 	} FloorDirection_t;
 
-	int getNextFloor(FloorDirection_t &dir) {
+	int getDestinationFloor(FloorDirection_t &dir) {
 		int result = -1;
 		if (dir == GOING_UP) {
 			for (int i = currentFloor+1; i < MAX_FLOOR; i++) {
@@ -133,34 +133,46 @@ class MainTask: public Task {
 
 		FloorDirection_t currentDirection = GOING_UP;
 		bool isMoving = false;
-		int nextFloor = 0;
+		int destinationFloor = 0;
 
 		while(1) {
 			if (!isMoving) {
-				nextFloor = getNextFloor(currentDirection);
-				ESP_LOGI(LOG_TAG, "Nextfloor: %d", nextFloor);
+				destinationFloor = getDestinationFloor(currentDirection);
+				ESP_LOGI(LOG_TAG, "destinationFloor: %d", destinationFloor);
 				isMoving = true;
 			}
 
-			if (nextFloor == -1) {
+			if (destinationFloor == -1) {
 				isMoving = false;
 				ESP_LOGI(LOG_TAG, "No chosen floor pick, wait for 1s");
 				delay(1000);
 				continue;
 			}
 
-			// IO active low
-			bool detected = elevatorDetected(nextFloor);
-			if (detected && isMoving) {
-				ESP_LOGI(LOG_TAG, "Stopping motor...");
-				myStepper_->stop();
-				currentFloor = nextFloor;
-				deleteChosenFloor(nextFloor);
+			if (isMoving) {
+				if (elevatorDetected(destinationFloor)) {
+					ESP_LOGI(LOG_TAG, "Stopping motor...");
+					myStepper_->stop();
+					currentFloor = destinationFloor;
+					deleteChosenFloor(destinationFloor);
 
-				isMoving = false;
-				
-				delay(2500); // Set delay simulation
-				continue;
+					isMoving = false;
+					
+					delay(2500); // Set delay simulation
+					continue;
+				}
+
+				int nextFloor = 0;
+				if (currentDirection == GOING_UP) {
+					nextFloor = currentFloor + 1;
+				} else {
+					nextFloor = currentFloor - 1;
+				}
+				if (elevatorDetected(nextFloor)) {
+					currentFloor = nextFloor;
+					ESP_LOGI(LOG_TAG, "Current floor %d", currentFloor);
+				}
+
 			}
 
 			// Here move motor
