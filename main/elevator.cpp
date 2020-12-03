@@ -22,12 +22,12 @@
 
 #define SERVICE_UUID        "4fafc201-1fb5-459e-8fcc-c5c9c331914b"
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
-#define MAX_FLOOR 8
+#define MAX_FLOOR 4
 
 static char LOG_TAG[] = "ElevatorApp";
 static int currentFloor = 1;
 //---------------Floor position: 0, 1, 2, 3, 4, 5, 6, 7 // 0 change to G for display
-static int chosenFloorList[8] = {1, 0, 1, 0, 1, 0, 1, 1};
+static int chosenFloorList[8] = {1, 0, 1, 1, 0, 0, 0, 0};
 
 BLECharacteristic *pCharacteristic;
 
@@ -63,16 +63,6 @@ class MainTask: public Task {
 		GOING_DOWN
 	} FloorDirection_t;
 
-	void initMotor(Stepper *stepper) {
-		int stepsPerRevolution = 4095;
-		gpio_num_t pin_1 = GPIO_NUM_27;
-		gpio_num_t pin_2 = GPIO_NUM_26;
-		gpio_num_t pin_3 = GPIO_NUM_25;
-		gpio_num_t pin_4 = GPIO_NUM_33;
-		stepper = new Stepper(stepsPerRevolution, pin_1, pin_2, pin_3, pin_4);
-		stepper->setSpeed(10);
-	}
-
 	int getNextFloor(FloorDirection_t &dir) {
 		int result = -1;
 		if (dir == GOING_UP) {
@@ -106,16 +96,38 @@ class MainTask: public Task {
 		chosenFloorList[floor] = 0;
 	}
 
+	bool elevatorDetected(int floor) {
+		gpio_num_t pin;
+		switch (floor) {
+			case 0:
+				pin = GPIO_NUM_23;
+				break;
+			case 1:
+				pin = GPIO_NUM_32;
+				break;
+			case 2:
+				pin = GPIO_NUM_35;
+				break;
+			case 3:
+				pin = GPIO_NUM_34;
+				break;
+		}
+
+		// Active low
+		return !(ESP32CPP::GPIO::read(pin));
+	}
+
 	void run(void *data) {
-		ESP32CPP::GPIO::setInput(GPIO_NUM_5);
+		// Init IR sensor
+		ESP32CPP::GPIO::setInput(GPIO_NUM_23);
+		ESP32CPP::GPIO::setInput(GPIO_NUM_32);
+		ESP32CPP::GPIO::setInput(GPIO_NUM_35);
+		ESP32CPP::GPIO::setInput(GPIO_NUM_34);
 		
+		// Init stepper motor
 		Stepper *myStepper_ = nullptr;
 		int stepsPerRevolution = 4095;
-		gpio_num_t pin_1 = GPIO_NUM_27;
-		gpio_num_t pin_2 = GPIO_NUM_26;
-		gpio_num_t pin_3 = GPIO_NUM_25;
-		gpio_num_t pin_4 = GPIO_NUM_33;
-		myStepper_ = new Stepper(stepsPerRevolution, pin_1, pin_2, pin_3, pin_4);
+		myStepper_ = new Stepper(stepsPerRevolution, GPIO_NUM_27, GPIO_NUM_26, GPIO_NUM_25, GPIO_NUM_33);
 		myStepper_->setSpeed(10);
 		myStepper_->stop();
 
@@ -138,8 +150,8 @@ class MainTask: public Task {
 			}
 
 			// IO active low
-			bool ioState = ESP32CPP::GPIO::read(GPIO_NUM_5);
-			if (!ioState && isMoving) {
+			bool detected = elevatorDetected(nextFloor);
+			if (detected && isMoving) {
 				ESP_LOGI(LOG_TAG, "Stopping motor...");
 				myStepper_->stop();
 				currentFloor = nextFloor;
