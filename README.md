@@ -7,6 +7,6 @@ TODO:
 - [x] Hold choosen floor queue
 - [x] Write menerima 1 value. chosen floor
 - [ ] lcd
-- [ ] read IR
+- [X] read IR
 - [x] Stepper control
 - [ ] Elevator miniature

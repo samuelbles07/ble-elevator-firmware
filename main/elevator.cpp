@@ -25,9 +25,9 @@
 #define MAX_FLOOR 4
 
 static char LOG_TAG[] = "ElevatorApp";
-static int currentFloor = 0;
+static int currentFloor = 1;
 //---------------Floor position: 0, 1, 2, 3, 4, 5, 6, 7 // 0 change to G for display
-static int chosenFloorList[8] = {0, 0, 0, 1, 0, 0, 0, 0};
+static int chosenFloorList[8] = {0, 0, 1, 0, 0, 0, 0, 0};
 
 BLECharacteristic *pCharacteristic;
 
@@ -111,6 +111,8 @@ class MainTask: public Task {
 			case 3:
 				pin = GPIO_NUM_34;
 				break;
+			default:
+				pin = GPIO_NUM_23;
 		}
 
 		// Active low
@@ -128,12 +130,13 @@ class MainTask: public Task {
 		Stepper *myStepper_ = nullptr;
 		int stepsPerRevolution = 4095;
 		myStepper_ = new Stepper(stepsPerRevolution, GPIO_NUM_27, GPIO_NUM_26, GPIO_NUM_25, GPIO_NUM_33);
-		myStepper_->setSpeed(10);
+		myStepper_->setSpeed(16);
 		myStepper_->stop();
 
 		FloorDirection_t currentDirection = GOING_UP;
 		bool isMoving = false;
 		int destinationFloor = 0;
+		int nextFloor = 0;
 
 		while(1) {
 			if (!isMoving) {
@@ -150,24 +153,38 @@ class MainTask: public Task {
 			}
 
 			if (isMoving) {
-				if (elevatorDetected(destinationFloor)) {
+				int sensorToDetect;
+				if (currentDirection == GOING_UP) {
+					nextFloor = currentFloor + 1;
+					sensorToDetect = destinationFloor;
+				} else {
+					nextFloor = currentFloor - 1;
+					sensorToDetect = destinationFloor - 1;
+				}
+
+				if (elevatorDetected(sensorToDetect)) {
+
+					if (destinationFloor == 0) {
+						// Ngakalin ga ada sensor untuk turun ke lantai G / 0
+						myStepper_->step(stepsPerRevolution * -1); 
+						myStepper_->stop();
+						delay(10);
+						myStepper_->step(stepsPerRevolution * -1); 
+						myStepper_->stop();
+						delay(10);
+						myStepper_->step(-1500); 
+					}
+
 					ESP_LOGI(LOG_TAG, "Stopping motor...");
 					myStepper_->stop();
 					currentFloor = destinationFloor;
 					deleteChosenFloor(destinationFloor);
-
 					isMoving = false;
 					
 					delay(2500); // Set delay simulation
 					continue;
 				}
 
-				int nextFloor = 0;
-				if (currentDirection == GOING_UP) {
-					nextFloor = currentFloor + 1;
-				} else {
-					nextFloor = currentFloor - 1;
-				}
 				if (elevatorDetected(nextFloor)) {
 					currentFloor = nextFloor;
 					ESP_LOGI(LOG_TAG, "Current floor %d", currentFloor);
