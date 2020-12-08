@@ -30,6 +30,7 @@ static int currentFloor = 1;
 static int chosenFloorList[8] = {0, 0, 1, 0, 0, 0, 0, 0};
 
 BLECharacteristic *pCharacteristic;
+BLEAdvertising *pAdvertising;
 
 static int convertChosenFloor() {
     int decimal = 0;
@@ -44,7 +45,7 @@ class MyNotifyTask: public Task {
 	void run(void *data) {
 		uint8_t value[2];
 		while(1) {
-			delay(300);
+			delay(600);
 			value[0] = currentFloor;
 			value[1] = convertChosenFloor();
 #if DEBUG_APP == 1
@@ -216,6 +217,7 @@ class MyCallbacks: public BLECharacteristicCallbacks {
 class MyServerCallbacks: public BLEServerCallbacks {
 	void onConnect(BLEServer* pServer) {
 		pMyNotifyTask->start();
+		pAdvertising->start();
 	};
 
 	void onDisconnect(BLEServer* pServer) {
@@ -246,11 +248,15 @@ void RunElevator() {
 	);
 
 	pCharacteristic->setCallbacks(new MyCallbacks());
-	pCharacteristic->addDescriptor(new BLE2902());
+
+	BLE2902* p2902Descriptor = new BLE2902();
+	p2902Descriptor->setNotifications(true);
+	pCharacteristic->addDescriptor(p2902Descriptor);
 
 	pService->start();
 
-	BLEAdvertising *pAdvertising = pServer->getAdvertising();
+	pAdvertising = pServer->getAdvertising();
+	pAdvertising->addServiceUUID(BLEUUID(pService->getUUID()));
 	pAdvertising->start();
 	
 }
