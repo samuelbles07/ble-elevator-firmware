@@ -237,6 +237,7 @@ void RunElevator() {
 	pMainTask->start();
 
 	BLEDevice::init("Elevator");
+	BLEDevice::setPower(ESP_PWR_LVL_P1);
 	BLEServer *pServer = BLEDevice::createServer();
 	pServer->setCallbacks(new MyServerCallbacks());
 
