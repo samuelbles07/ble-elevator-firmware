@@ -131,7 +131,7 @@ class MainTask: public Task {
 		Stepper *myStepper_ = nullptr;
 		int stepsPerRevolution = 4095;
 		myStepper_ = new Stepper(stepsPerRevolution, GPIO_NUM_27, GPIO_NUM_26, GPIO_NUM_25, GPIO_NUM_33);
-		myStepper_->setSpeed(16);
+		myStepper_->setSpeed(12);
 		myStepper_->stop();
 
 		FloorDirection_t currentDirection = GOING_UP;
@@ -169,11 +169,8 @@ class MainTask: public Task {
 						// Ngakalin ga ada sensor untuk turun ke lantai G / 0
 						myStepper_->step(stepsPerRevolution * -1); 
 						myStepper_->stop();
-						delay(10);
+						delay(100);
 						myStepper_->step(stepsPerRevolution * -1); 
-						myStepper_->stop();
-						delay(10);
-						myStepper_->step(-1500); 
 					}
 
 					ESP_LOGI(LOG_TAG, "Stopping motor...");
