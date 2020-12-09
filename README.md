@@ -9,4 +9,4 @@ TODO:
 - [ ] lcd
 - [X] read IR
 - [x] Stepper control
-- [ ] Elevator miniature
+- [X] Elevator miniature
